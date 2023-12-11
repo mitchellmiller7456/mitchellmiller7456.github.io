@@ -1,10 +1,17 @@
+// Creating function that enables a listener so that when the user changes a button in the html doc it
+// recalls the wrangelData function and subsequently the updateVis functions for the treemap
 function treemapchange() {
     treemap.wrangelData();
 }
 
+// Originate Treemap Class
 class Treemap {
+    // Create constructor to reference the id within the html doc and populate data
     constructor(parentElement, data) {
         this.parentElement = parentElement;
+
+        // Hard coded the data into the file as it was not in the form of a CSV
+        // Description about data is in the readme as well as process book
         this.data =  {"name":"PenaltyCount","children":
                 [{"name":"2004 Season","children":
                         [{"name":"Less Than Two Penalties","children":
@@ -279,13 +286,14 @@ class Treemap {
                                 {"name":"15 or More Penalties","children":
                                         [{"name": "Wins","value": 120},{"name": "Losses","value":112}]}]}]};
     }
-
+    // Initialize the visualization that will take place
     initVis() {
         let vis = this;
         vis.margin = {top: 40, right: 0, bottom: 0, left: 0}
         vis.width = 700;
         vis.height = 300 - vis.margin.top - vis.margin.bottom;
 
+        // Create tile function to pull out the different nodes recursively of the data object
         function tile(node, x0, y0, x1, y1) {
             d3.treemapBinary(node, 0, 0, vis.width, vis.height);
             for (const child of node.children) {
@@ -297,7 +305,7 @@ class Treemap {
         }
 
 
-
+        // Initialize csv
         vis.svg = d3.select("#" + vis.parentElement).append("svg")
             .attr("width", vis.width)
             .attr("height", vis.height + 30)
@@ -305,25 +313,27 @@ class Treemap {
 
         vis.hierarchy = d3.hierarchy(vis.data).sum(d => d.value)
 
-
+        // Obtain root (top level) value
         vis.root = d3.treemap().tile(tile)(vis.hierarchy)
 
-
+        // Initialize scales
         vis.x = d3.scaleLinear();
         vis.y = d3.scaleLinear();
 
 
-
+        // Groupings for the actual rectangles that populate the treemap
         vis.cellsgroup = vis.svg.selectAll(".cell")
             .data(vis.root.children)
             .enter()
             .append("g")
             .attr("class", 'cell')
 
+        // SVG for the user selection
         vis.infobox = d3.select("#" + vis.parentElement).append("svg")
             .attr("width", 500)
             .attr("height", 260)
 
+        // Border of vis.infobox
         vis.infobox.append("rect")
             .attr("x", 35)
             .attr("y", 5)
@@ -332,6 +342,8 @@ class Treemap {
             .attr("fill", "white")
             .attr("stroke", "steelblue")
             .attr("stroke-width", 3)
+
+        // Create different groups to hold text in order to update values based on user input
 
         vis.seasongroup = vis.infobox.selectAll(".season")
             .data(vis.root.children)
@@ -375,8 +387,12 @@ class Treemap {
     wrangelData() {
         let vis = this;
 
+        // Obtain values for the users input through referencing the html doc
         vis.selectedSeason = Number(document.getElementById("season").value)
         vis.selectedPen = Number(document.getElementById("pencount").value)
+
+        // Subset down key information based off of the user input that takes place when they
+        // change the input for a certain button
         if (vis.selectedSeason === 16 && vis.selectedPen === 8) {vis.newnode = vis.root.children}
         else if (vis.selectedSeason === 16 && vis.selectedPen < 8) {vis.newnode = vis.root.children}
         else if (vis.selectedSeason < 16 && vis.selectedPen === 8) {vis.newnode = vis.root.children[vis.selectedSeason].children}
@@ -398,19 +414,23 @@ class Treemap {
 
     updateVis() {
 
+        // Create cells group which will hold all rectangels within treemap
         let vis = this;
         vis.cells = vis.cellsgroup.selectAll(".cell").data(vis.newnode)
+
+        // Initialize min and max values for scale based on first child
         vis.minx = vis.newnode[0].x0
         vis.miny = vis.newnode[0].y0
         vis.maxx = vis.newnode[0].x1
         vis.maxy = vis.newnode[0].y1
 
+        // Iteratively step through each child and update min and max values for x scale
         vis.newnode.forEach(function(d) {
             if (d.x0 < vis.minx) { vis.minx = d.x0}
             else if (d.x1 > vis.maxx) { vis.maxx = d.x1}
         })
 
-
+        // Iteratively step through each child and update min and max values for y scale
         vis.newnode.forEach(function(d) {
             if (d.y0 < vis.miny) { vis.miny = d.y0}
             else if (d.y1 > vis.maxy) { vis.maxy = d.y1}
@@ -423,8 +443,11 @@ class Treemap {
         console.log(vis.maxx)
         console.log(vis.maxy)
 
+        // Update x and y axes
         vis.x.domain([vis.minx, vis.maxx]).range([0, vis.width])
         vis.y.domain([vis.miny, vis.maxy]).range([0, vis.height])
+
+
         vis.newnode.forEach(function(d) {
             console.log(d.x0)
             console.log(vis.x(d.x0))
@@ -442,6 +465,7 @@ class Treemap {
         console.log(vis.y(vis.miny))
         console.log(vis.y(vis.maxy))
 
+        // Create Cells subset and then update based on user selection
         vis.cells = vis.cellsgroup.selectAll(".cell").data(vis.newnode)
 
         vis.cells.exit().remove();
@@ -458,7 +482,7 @@ class Treemap {
             .attr('stroke', 'white')
             .attr("fill", "steelblue")
 
-
+        // Update all of the information within the infobox
         vis.seasoncell = vis.seasongroup.selectAll(".season").data(vis.newnode)
 
         vis.seasoncell.exit().remove();
